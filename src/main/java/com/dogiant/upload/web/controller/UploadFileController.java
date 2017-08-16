@@ -8,6 +8,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -68,6 +69,22 @@ public class UploadFileController implements HandlerExceptionResolver {
 		if (channel == null || channel.length() == 0) {
 			channel = "default";
 		}
+		
+		String type = request.getParameter("type");
+		
+		Boolean genThumbnails = "true".equals(request.getParameter("genThumbnails"));
+		
+		Boolean paddingWhite = "true".equals(request.getParameter("paddingWhite"))?true : ImageConfig.PADDING_WHITE;
+		
+		String sizes = request.getParameter("sizes");
+		
+		Boolean addWaterMark = "true".equals(request.getParameter("addWaterMark"));
+		
+		String waterMarkPath = request.getParameter("waterMarkPath");
+		
+		if(StringUtils.isEmpty(waterMarkPath)){
+			waterMarkPath = ImageConfig.WATERMARK_LOCAL_PATH;
+		}
 
 		// 返回地址 ?fileName=/201405/16/hp/hp_14002197707471.jpg
 		String returnUrl = request.getParameter("returnUrl");
@@ -104,10 +121,11 @@ public class UploadFileController implements HandlerExceptionResolver {
 				LOG.info("========================================");
 
 				// 判断size是否超出限制 1048576
-				if (upload.getSize() > 1048576) {
-					LOG.info("文件长度1M超限>1048576: " + upload.getSize());
-					if (StringUtils.isNotBlank(returnUrl) && returnUrl.indexOf(ImageConfig.FILE_HOST) != -1) {
-						String msg = "上传文件大小超过1M限制";
+				if (upload.getSize() > 2*1024*1024) {
+					LOG.info("文件长度2M超限: " + upload.getSize());
+					LOG.info(ImageConfig.FILE_HOST);
+					if ("url".equals(type) && StringUtils.isNotBlank(returnUrl) && returnUrl.indexOf(ImageConfig.DOMAIN) != -1) {
+						String msg = "上传文件大小超过2M限制";
 						try {
 							response.sendRedirect(returnUrl + "?code=403&msg=" + URLEncoder.encode(msg, "utf8"));
 						} catch (UnsupportedEncodingException e) {
@@ -119,7 +137,7 @@ public class UploadFileController implements HandlerExceptionResolver {
 					} else {
 						obj.put("success", false);
 						obj.put("code", 403);
-						obj.put("msg", "上传文件大小超过限制");
+						obj.put("msg", "上传文件大小超过2M限制");
 						JSONObject o = new JSONObject(obj);
 						String jsonString = o.toJSONString();
 						if (callback == null || callback.length() == 0) {
@@ -199,6 +217,8 @@ public class UploadFileController implements HandlerExceptionResolver {
 						}
 					}
 				}
+				
+				
 
 				UploadFile file = new UploadFile();
 				file.setChannel(channel);
@@ -223,6 +243,31 @@ public class UploadFileController implements HandlerExceptionResolver {
 		JSONArray imgUrls = new JSONArray();
 		// uploadFileDao 插入数据表UploadFile
 		if (CollectionUtils.isNotEmpty(list)) {
+			
+			if (genThumbnails!=null && genThumbnails) {
+				try {
+					if ("avatar".equals(channel)) {
+						zoomAvartars(list,paddingWhite);
+					}
+					if (StringUtils.isNotEmpty(sizes)) {
+						Map<String, Object> map = new HashMap<String, Object>();
+						map.put("watermark", addWaterMark);
+						map.put("watermarkPath", waterMarkPath);
+						zoomImages(map,list,sizes,paddingWhite);
+					}
+				} catch (Exception e) {
+					e.printStackTrace();
+					obj.put("success", false);
+					obj.put("code", 500);
+					obj.put("msg", "生成缩略图异常");
+					JSONObject o = new JSONObject(obj);
+					String jsonString = o.toJSONString();
+					if (callback == null || callback.length() == 0) {
+						return jsonString;
+					}
+					return "try{" + callback + "(" + jsonString + ");}catch(e){}";
+				}
+			}
 			for (UploadFile uploadFile : list) {
 				LOG.info("uploadFile path: " + ImageConfig.IMAGE_LOCAL_PATH_PREFIX + uploadFile.getUrl());
 				File file = null;
@@ -373,6 +418,69 @@ public class UploadFileController implements HandlerExceptionResolver {
 		}
 		return "try{" + callback + "(" + jsonString + ");}catch(e){}";
 	}
+	
+	
+	/**
+	 * 图像等比缩放
+	 * @param map 是否加水印、水印文件路径
+	 * @param list
+	 * @param sizes 尺寸格式 100,100,_100_100
+	 * @param addWhite 是否补白
+	 */
+	private void zoomImages(Map<String, Object> map, List<UploadFile> list, String sizes, Boolean addWhite) {
+		Iterator<UploadFile> it = list.iterator();
+		while (it.hasNext()) {
+			UploadFile file = (UploadFile) it.next();
+			String srcPath = ImageConfig.IMAGE_LOCAL_PATH_PREFIX + file.getUrl();
+			zoomImage(map,srcPath,sizes,addWhite);
+		}
+	}
+	
+	/**
+	 * 针对某张原图按尺寸剪裁
+	 * @param map
+	 * @param srcPath
+	 * @param sizes
+	 * @param addWhite
+	 */
+	private void zoomImage(Map<String, Object> map, String srcPath, String sizes, Boolean addWhite) {
+		for (String format : sizes.split(";")) {
+			String[] adapters = format.split(",");
+			Integer width = null;
+			Integer height = null;
+			try {
+				width = Integer.parseInt(adapters[0]);
+				height = Integer.parseInt(adapters[1]);
+			} catch (NumberFormatException e1) {
+				e1.printStackTrace();
+			}
+			String newPath = getNewFileName(srcPath,adapters[2]);
+			try {
+				ImageTools.zoomImage(width, height, addWhite, srcPath, newPath);
+				if((boolean) map.get("waterMark")){
+					String waterMarkPath = (String) map.get("waterMarkPath");
+					ImageTools.waterMark(waterMarkPath, newPath, newPath, "southeast", 40);
+				}
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+	}
+	
+	/**
+	 * 各尺寸头像生成
+	 * @param list
+	 * @param addWhite
+	 */
+	private void zoomAvartars(List<UploadFile> list, boolean paddingWhite) {
+		Iterator<UploadFile> it = list.iterator();
+		while (it.hasNext()) {
+			UploadFile file = (UploadFile) it.next();
+
+			String srcPath = ImageConfig.IMAGE_LOCAL_PATH_PREFIX + file.getUrl();
+			zoomAvartar(srcPath,paddingWhite);
+		}
+	}
 
 	/**
 	 * 根据源图路径生成头像各尺寸缩略图
@@ -380,7 +488,7 @@ public class UploadFileController implements HandlerExceptionResolver {
 	 * @param srcPath
 	 * @param addWhite
 	 */
-	private void zoomAvartar(String srcPath, boolean addWhite) {
+	private void zoomAvartar(String srcPath, Boolean paddingWhite) {
 		String formats = ImageConfig.AVATAR_FORMATS;
 		for (String format : formats.split(";")) {
 			String[] adapters = format.split(",");
@@ -394,7 +502,7 @@ public class UploadFileController implements HandlerExceptionResolver {
 			}
 			String newPath = getNewFileName(srcPath, adapters[2]);
 			try {
-				ImageTools.zoomImage(width, height, addWhite, srcPath, newPath);
+				ImageTools.zoomImage(width, height, paddingWhite, srcPath, newPath);
 			} catch (Exception e) {
 				e.printStackTrace();
 			}

@@ -48,7 +48,7 @@
         	是否生成缩略图: <input type="text" name="genThumbnails" /> genThumbnails(true|false) 图片生成缩略图<br/>
         	尺寸描述: <input type="text" name="sizes" /> sizes(width,height,suffix) 例如：100,100,_100_square<br/>
         	水印: <input type="text" name="waterMark" /> waterMark(true|false) <br/>
-        	水印文件路径: <input type="text" name="waterMarkPath" /> waterMarkPath(/data/upload/files/watermark/watermark.png) <br/>
+        	水印文件路径: <input type="text" name="watermarkPath" /> waterMarkPath(/data/upload/files/watermark/watermark.png) <br/>
             选择图片: <input type="file" name="uploads" /> <br/>
             　　　　　 <input type="file" name="uploads" /> <br/>
            <input type="submit" value="上传" />

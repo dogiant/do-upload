@@ -8,23 +8,30 @@ import org.springframework.stereotype.Component;
 @Configuration
 public class ImageConfig {
 
+	// 站点域名
 	public static String DOMAIN;
-	
+
+	// 文件服务器主机
 	public static String FILE_HOST;
 
+	// 图片URL地址前缀
 	public static String IMAGE_URL_PREFIX;
 
+	// 图片本机路径前缀
 	public static String IMAGE_LOCAL_PATH_PREFIX;
-	
-	//默认通道
+
+	// 默认通道
 	public static String CHANNEL = "common";
-	
-	//头像大小格式
+
+	// 头像大小格式
 	public static String AVATAR_FORMATS = "180,180,_x;73,73,_m;33,33,_s;";
-	
-	//默认补白
+
+	// 水印路径
+	public static String WATERMARK_LOCAL_PATH;
+
+	// 默认补白
 	public static boolean PADDING_WHITE = false;
-	
+
 	@Value("${image.url.domain}")
 	public void setDomain(String domain) {
 		ImageConfig.DOMAIN = domain;
@@ -45,18 +52,9 @@ public class ImageConfig {
 		ImageConfig.IMAGE_LOCAL_PATH_PREFIX = imageLocalPathPrefix;
 	}
 
-	/**
-	 * 文件上传配置
-	 * 
-	 * @return
-	 */
-//	@Bean
-//	public MultipartConfigElement multipartConfigElement() {
-//		MultipartConfigFactory factory = new MultipartConfigFactory();
-//		// 单个文件最大
-//		factory.setMaxFileSize("10240KB"); // KB,MB
-//		// 设置总上传数据总大小
-//		factory.setMaxRequestSize("102400KB");
-//		return factory.createMultipartConfig();
-//	}
+	@Value("${image.watermark.local_path}")
+	public void setWartermarkLocalPath(String watermarkLocalPath) {
+		ImageConfig.WATERMARK_LOCAL_PATH = watermarkLocalPath;
+	}
+
 }
