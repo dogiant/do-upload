@@ -42,12 +42,12 @@
 		<div>
 		<p>${errors }</p>
 		<form action="upload" enctype="multipart/form-data" method="post">
-        	返回类型 :<input type="text" name="returnType" placeholder="json" /> returnType(json|url)<br/>
+        	返回类型 :<input type="text" name="type" placeholder="json" /> type(json|url)<br/>
         	返回地址 :<input type="text" name="returnUrl" /> returnUrl(http://aa.com/aa.do)当type=url时有效<br/>
         	使用方通道标识: <input type="text" name="channel" /> channel(avatar|pic|...) 使用方通道标识<br/>
         	是否生成缩略图: <input type="text" name="genThumbnails" /> genThumbnails(true|false) 图片生成缩略图<br/>
         	尺寸描述: <input type="text" name="sizes" /> sizes(width,height,suffix) 例如：100,100,_100_square<br/>
-        	水印: <input type="text" name="waterMark" /> waterMark(true|false) <br/>
+        	水印: <input type="text" name="addWaterMark" /> addWaterMark(true|false) <br/>
         	水印文件路径: <input type="text" name="watermarkPath" /> waterMarkPath(/data/upload/files/watermark/watermark.png) <br/>
             选择图片: <input type="file" name="uploads" /> <br/>
             　　　　　 <input type="file" name="uploads" /> <br/>
