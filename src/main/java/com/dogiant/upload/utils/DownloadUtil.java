@@ -14,17 +14,17 @@ import com.dogiant.upload.graphics.ImageTools;
 
 public class DownloadUtil {
 
-	public static String downloadFromUrl(String url, String dir) {
+	public static File downloadFromUrl(String url, String dir) {
 
 		// URL resourceUrl = new URL(urlStr);
 		// InputStream content = (InputStream) resourceUrl.getContent();
 
 		try {
-			URL httpurl = new URL(url);
+			URL httpurl = new URL(url);                                     
 			String fileName = getFileNameFromUrl(url);
 			File f = new File(dir + fileName);
 			FileUtils.copyURLToFile(httpurl, f);
-			return f.getAbsolutePath();
+			return f;
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -95,10 +95,10 @@ public class DownloadUtil {
 				// 显示行号
 				// System.out.println("line " + line + ": " + tempString);
 
-				String s = downloadFromUrl(tempString, "c:\\themePic\\");
+				File f = downloadFromUrl(tempString, "c:\\themePic\\");
 
 				// 获取图片宽高
-				String sizeJson = ImageTools.getImageSize(s);
+				String sizeJson = ImageTools.getImageSize(f.getAbsolutePath());
 				JSONObject jsonObject = null;
 				try {
 					jsonObject = JSON.parseObject(sizeJson);

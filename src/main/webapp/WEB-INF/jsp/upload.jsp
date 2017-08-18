@@ -10,11 +10,11 @@
         <meta http-equiv="pragma" content="no-cache">
         <meta http-equiv="cache-control" content="no-cache">
         <meta http-equiv="expires" content="0">
-        <link type="text/css" rel="stylesheet" href="/assets/css/imgareaselect-default.css"/>
-        <script type="text/javascript" src="/assets/scripts/jquery.min.js"></script>
-        <script type="text/javascript" src="/assets/scripts/jquery.form.js"></script>
-        <script type="text/javascript" src="/assets/scripts/ajaxfileupload.js"></script>
-		<script type="text/javascript" src="/assets/scripts/jquery.imgareaselect.pack.js"></script>
+        <link type="text/css" rel="stylesheet" href="${contextUrl}/assets/css/imgareaselect-default.css"/>
+        <script type="text/javascript" src="${contextUrl}/assets/scripts/jquery.min.js"></script>
+        <script type="text/javascript" src="${contextUrl}/assets/scripts/jquery.form.js"></script>
+        <script type="text/javascript" src="${contextUrl}/assets/scripts/ajaxfileupload.js"></script>
+		<script type="text/javascript" src="${contextUrl}/assets/scripts/jquery.imgareaselect.pack.js"></script>
     </head>
 
     <body>
@@ -41,14 +41,14 @@
 		<h2>基本用法</h2>
 		<div>
 		<p>${errors }</p>
-		<form action="upload" enctype="multipart/form-data" method="post">
+		<form action="api" enctype="multipart/form-data" method="post">
         	返回类型 :<input type="text" name="type" placeholder="json" /> type(json|url)<br/>
         	返回地址 :<input type="text" name="returnUrl" /> returnUrl(http://aa.com/aa.do)当type=url时有效<br/>
         	使用方通道标识: <input type="text" name="channel" /> channel(avatar|pic|...) 使用方通道标识<br/>
         	是否生成缩略图: <input type="text" name="genThumbnails" /> genThumbnails(true|false) 图片生成缩略图<br/>
         	尺寸描述: <input type="text" name="sizes" /> sizes(width,height,suffix) 例如：100,100,_100_square<br/>
-        	水印: <input type="text" name="addWaterMark" /> addWaterMark(true|false) <br/>
-        	水印文件路径: <input type="text" name="watermarkPath" /> waterMarkPath(/data/upload/files/watermark/watermark.png) <br/>
+        	水印: <input type="text" name="addWatermark" /> addWatermark(true|false) <br/>
+        	水印文件路径: <input type="text" name="watermarkPath" /> watermarkPath(/data/upload/files/watermark/watermark.png) <br/>
             选择图片: <input type="file" name="uploads" /> <br/>
             　　　　　 <input type="file" name="uploads" /> <br/>
            <input type="submit" value="上传" />
@@ -120,7 +120,7 @@
 	    	<input type="hidden" name="y1" value="0" />  
 			<input type="hidden" name="x2" value="100" />  
 			<input type="hidden" name="y2" value="100" /> 
-			<form id="uploadAjaxForm" action="upload" enctype="multipart/form-data" method="post">
+			<form id="uploadAjaxForm" action="api" enctype="multipart/form-data" method="post">
 				<input id="uploadAjax" name="uploads" type="file" onchange="uploadAjaxSubmit(this);"/>  
 			</form>
 			<div id="facediv" style="display:none;z-index:100;">  
@@ -146,8 +146,8 @@
 				success : function(data) {
 					if (data.success) {
 						$("#facediv").css({"display":"block"});
-						$("#face").attr("src", fileHost + data['fileName'] );
-						$('<div><img src="' + fileHost + data['fileName'] + '" style="position: relative;" /><div>')
+						$("#face").attr("src", fileHost + data.result[0] );
+						$('<div><img src="' + fileHost + data.result[0] + '" style="position: relative;" /><div>')
 					        .css({
 					            float: 'left',
 					            position: 'relative',
@@ -159,7 +159,7 @@
 						
 						$('<button id="btnSubmit">提交</button>')
 				        .click(function (){
-				        	cutImage(data['fileName']);
+				        	cutImage(data.result[0]);
 				        }).insertAfter($('#facediv'));
 						$(".imgareaselect-outer").show();
 						$(".imgareaselect-selection").parent().show();
@@ -200,7 +200,7 @@
 		function cutImage(path) {
 			$.ajax( {
 				type : "POST",
-				url:"upload",
+				url:"crop",
 				dateType:"jsonp",
 				data:{"x1":$('input[name="x1"]').val(),
 				"x2":$('input[name="x2"]').val(),
@@ -216,7 +216,7 @@
 						$(".imgareaselect-outer").hide();
 						$(".imgareaselect-selection").parent().hide();
 						$("#faceCropDiv").css({"display":"block"});
-						$("#faceCrop").attr("src", fileHost + data['fileName'] );
+						$("#faceCrop").attr("src", fileHost + data.result[0] );
 					}else{
 						alert("头像剪裁失败");
 					}

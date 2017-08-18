@@ -52,38 +52,40 @@ public class UploadFileController implements HandlerExceptionResolver {
 	private UploadFileService uploadFileService;
 
 	@RequestMapping(value = "/input", method = RequestMethod.GET)
-	public String input(Map<String, Object> model) {
+	public String input(Map<String, Object> model, HttpServletRequest request) {
+		model.put("contextUrl", request.getServletContext().getContextPath());
 		LOG.info("/input");
 		model.put("fileHost", ImageConfig.FILE_HOST);
 		return "upload";
 	}
 
 	@ResponseBody
-	@RequestMapping(value = "/upload", method = RequestMethod.POST, produces = "text/html;charset=UTF-8")
+	@RequestMapping(value = "/api", method = RequestMethod.POST, produces = "text/html;charset=UTF-8")
 	public String upload(@RequestParam MultipartFile[] uploads, HttpServletRequest request,
 			HttpServletResponse response) {
 
 		String callback = request.getParameter("callback");
 
 		String channel = request.getParameter("channel");
-		if (channel == null || channel.length() == 0) {
-			channel = "default";
+		if (StringUtils.isEmpty(channel)) {
+			channel = ImageConfig.CHANNEL;
 		}
 		
 		String type = request.getParameter("type");
 		
 		Boolean genThumbnails = "true".equals(request.getParameter("genThumbnails"));
 		
-		Boolean paddingWhite = "true".equals(request.getParameter("paddingWhite"))?true : ImageConfig.PADDING_WHITE;
+		Boolean paddingWhite = request.getParameter("paddingWhite") == null ? ImageConfig.PADDING_WHITE
+				: "true".equals(request.getParameter("paddingWhite"));
 		
 		String sizes = request.getParameter("sizes");
 		
-		Boolean addWaterMark = "true".equals(request.getParameter("addWaterMark"));
+		Boolean addWatermark = "true".equals(request.getParameter("addWatermark"));
 		
-		String waterMarkPath = request.getParameter("waterMarkPath");
+		String watermarkPath = request.getParameter("watermarkPath");
 		
-		if(StringUtils.isEmpty(waterMarkPath)){
-			waterMarkPath = ImageConfig.WATERMARK_LOCAL_PATH;
+		if(StringUtils.isEmpty(watermarkPath)){
+			watermarkPath = ImageConfig.WATERMARK_LOCAL_PATH;
 		}
 
 		// 返回地址 ?fileName=/201405/16/hp/hp_14002197707471.jpg
@@ -106,7 +108,7 @@ public class UploadFileController implements HandlerExceptionResolver {
 		Map<String, Object> obj = new HashMap<String, Object>();
 
 		// 上传的文件列表
-		List<UploadFile> list = new ArrayList<UploadFile>();
+		List<UploadFile> uploadFileList = new ArrayList<UploadFile>();
 
 		// <input type="file" name="uploads"/>
 		for (MultipartFile upload : uploads) {
@@ -181,17 +183,15 @@ public class UploadFileController implements HandlerExceptionResolver {
 
 				if (width != 0 && height != 0) {
 					String msg = "";
-					if ("console_theme_type".equals(channel)) {
-						if (StringUtils.isNotEmpty(size)) {
-							try {
-								String[] s = size.split("\\*");
-								if (s != null && s.length == 2
-										&& (width != Integer.valueOf(s[0]) || height != Integer.valueOf(s[1]))) {
-									msg = "上传图片宽高必须为" + s[0] + "x" + s[1];
-								}
-							} catch (Exception e) {
-								e.printStackTrace();
+					if (StringUtils.isNotEmpty(size)) {
+						try {
+							String[] s = size.split("\\*");
+							if (s != null && s.length == 2
+									&& (width != Integer.valueOf(s[0]) || height != Integer.valueOf(s[1]))) {
+								msg = "上传图片宽高必须为" + s[0] + "x" + s[1];
 							}
+						} catch (Exception e) {
+							e.printStackTrace();
 						}
 					}
 					if (StringUtils.isNotBlank(msg)) {
@@ -235,25 +235,25 @@ public class UploadFileController implements HandlerExceptionResolver {
 
 				file.setAudit(false);
 				file.setStatus(1);
-				list.add(file);
+				uploadFileList.add(file);
 
 			}
 		}
 
 		JSONArray imgUrls = new JSONArray();
 		// uploadFileDao 插入数据表UploadFile
-		if (CollectionUtils.isNotEmpty(list)) {
+		if (CollectionUtils.isNotEmpty(uploadFileList)) {
 			
 			if (genThumbnails!=null && genThumbnails) {
 				try {
 					if ("avatar".equals(channel)) {
-						zoomAvartars(list,paddingWhite);
+						zoomAvartars(uploadFileList,paddingWhite);
 					}
 					if (StringUtils.isNotEmpty(sizes)) {
 						Map<String, Object> map = new HashMap<String, Object>();
-						map.put("watermark", addWaterMark);
-						map.put("watermarkPath", waterMarkPath);
-						zoomImages(map,list,sizes,paddingWhite);
+						map.put("addWatermark", addWatermark);
+						map.put("watermarkPath", watermarkPath);
+						zoomImages(map,uploadFileList,sizes,paddingWhite);
 					}
 				} catch (Exception e) {
 					e.printStackTrace();
@@ -268,7 +268,7 @@ public class UploadFileController implements HandlerExceptionResolver {
 					return "try{" + callback + "(" + jsonString + ");}catch(e){}";
 				}
 			}
-			for (UploadFile uploadFile : list) {
+			for (UploadFile uploadFile : uploadFileList) {
 				LOG.info("uploadFile path: " + ImageConfig.IMAGE_LOCAL_PATH_PREFIX + uploadFile.getUrl());
 				File file = null;
 				try {
@@ -279,7 +279,6 @@ public class UploadFileController implements HandlerExceptionResolver {
 				}
 
 				// 此处为本地地址返回
-
 				uploadFileService.save(uploadFile);
 
 				imgUrls.add(uploadFile.getUrl());
@@ -287,7 +286,7 @@ public class UploadFileController implements HandlerExceptionResolver {
 
 		}
 
-		if (StringUtils.isNotBlank(returnUrl) && returnUrl.indexOf(".jd") != -1) {
+		if ("url".equals(type) && StringUtils.isNotBlank(returnUrl) && returnUrl.indexOf(ImageConfig.DOMAIN) != -1) {
 			try {
 				response.sendRedirect(returnUrl + "?imgUrls=" + imgUrls.toJSONString());
 			} catch (IOException e) {
@@ -321,17 +320,13 @@ public class UploadFileController implements HandlerExceptionResolver {
 		String callback = request.getParameter("callback");
 		
 		String channel = request.getParameter("channel");
-		if (channel == null || channel.length() == 0) {
-			channel = "default";
+		if (StringUtils.isEmpty(channel)) {
+			channel = ImageConfig.CHANNEL;
 		}
 
 		// 选择图像区域二次剪裁
-		Boolean imgAreaSelect = false;
+		Boolean imgAreaSelect = "true".equalsIgnoreCase(request.getParameter("imgAreaSelect"));
 
-		String imgAreaSelectStr = request.getParameter("imgAreaSelect");
-		if (imgAreaSelectStr != null && "true".equalsIgnoreCase(imgAreaSelectStr)) {
-			imgAreaSelect = true;
-		}
 		String imgPath = null;
 		Integer x1 = null;
 		Integer y1 = null;
@@ -339,7 +334,11 @@ public class UploadFileController implements HandlerExceptionResolver {
 		Integer y2 = null;
 
 		Date date = new Date();
-		List<File> fileList = new ArrayList<File>();
+		
+		// 上传的文件列表
+		List<UploadFile> uploadFileList = new ArrayList<UploadFile>();
+		
+		JSONArray imgUrls = new JSONArray();
 		// 二次剪裁
 		if (imgAreaSelect) {
 			imgPath = request.getParameter("imgPath");
@@ -351,55 +350,98 @@ public class UploadFileController implements HandlerExceptionResolver {
 			// 区域选择裁剪
 			// savePath = savePath.substring(0, savePath.lastIndexOf("."))
 			if (StringUtils.isNotEmpty(imgPath)) {
+				
+				
+				String pathUrl = null;
 				if (imgPath.indexOf(".") != -1) {
-
-					StringBuffer path = new StringBuffer();
-					path.append("/").append(new SimpleDateFormat("yyyyMM").format(date)).append("/")
-							.append(new SimpleDateFormat("dd").format(date)).append("/").append("crop").append("/");
-
-					String uploadpath = ImageConfig.IMAGE_LOCAL_PATH_PREFIX + path.toString();
-					FileUtil.mkdir(uploadpath);
-
-					String filePath = ImageConfig.IMAGE_LOCAL_PATH_PREFIX + imgPath;
+					
+					//远程图片处理
 					if (imgPath.indexOf("http") != -1) {
-						filePath = DownloadUtil.downloadFromUrl(imgPath,
-								ImageConfig.IMAGE_LOCAL_PATH_PREFIX + path.toString());
+						StringBuffer path = new StringBuffer();
+						path.append("/").append(new SimpleDateFormat("yyyyMM").format(date)).append("/")
+								.append(new SimpleDateFormat("dd").format(date)).append("/").append("crop").append("/");
+
+						String uploadpath = ImageConfig.IMAGE_LOCAL_PATH_PREFIX + path.toString();
+						FileUtil.mkdir(uploadpath);
+						File file = DownloadUtil.downloadFromUrl(imgPath, uploadpath);
+						
+						if (file != null) {
+							String filePath = file.getAbsolutePath();
+							//将保存到服务器的图片地址记录下来
+							pathUrl =  filePath.replaceAll(ImageConfig.IMAGE_LOCAL_PATH_PREFIX, "/");
+
+							UploadFile uploadFile = new UploadFile();
+							uploadFile.setChannel(channel);
+							uploadFile.setCreator(channel);
+							uploadFile.setUserId("");
+							uploadFile.setNickname("");
+
+							uploadFile.setCtime(date);
+							uploadFile.setMtime(date);
+							uploadFile.setContentType("unknown");
+							uploadFile.setExtension(pathUrl.substring(pathUrl.lastIndexOf(".") + 1));
+							uploadFile.setName(file.getName());
+							uploadFile.setUrl(pathUrl);
+
+							uploadFile.setAudit(false);
+							uploadFile.setStatus(1);
+							uploadFileList.add(uploadFile);
+						}
+					}else{
+						pathUrl = imgPath;
 					}
 
-					LOG.info("filePath=========" + filePath);
+					LOG.info("pathUrl=========" + pathUrl);
 
-					if (filePath != null) {
-						String newName = filePath.substring(0, filePath.lastIndexOf(".")) + "_crop"
-								+ filePath.substring(filePath.lastIndexOf("."));
+					if (StringUtils.isNotEmpty(pathUrl)) {
+						String cropPathUrl = pathUrl.substring(0, pathUrl.lastIndexOf(".")) + "_crop"
+								+ pathUrl.substring(pathUrl.lastIndexOf("."));
+						
+						String cropFilePath = ImageConfig.IMAGE_LOCAL_PATH_PREFIX + cropPathUrl;
+						LOG.info("originPath=========" + ImageConfig.IMAGE_LOCAL_PATH_PREFIX + pathUrl);
+						LOG.info("cropFilePath=========" + cropFilePath);
+						
 						try {
-							ImageTools.cutImage(filePath, newName, x1, y1, x2, y2);
+							ImageTools.cutImage(ImageConfig.IMAGE_LOCAL_PATH_PREFIX + pathUrl, cropFilePath, x1, y1, x2, y2);
 							File file = null;
 							try {
-								file = new File(newName);
+								file = new File(cropFilePath);
 								LOG.info("file.exists()==" + file.exists());
+								
+								UploadFile uploadFile = new UploadFile();
+								uploadFile.setChannel(channel);
+								uploadFile.setCreator(channel);
+								uploadFile.setUserId("");
+								uploadFile.setNickname("");
+
+								uploadFile.setCtime(date);
+								uploadFile.setMtime(date);
+								uploadFile.setContentType("unknown");
+								uploadFile.setExtension(cropFilePath.substring(cropFilePath.lastIndexOf(".") + 1));
+								uploadFile.setName(file.getName());
+								uploadFile.setUrl(cropPathUrl);
+
+								uploadFile.setAudit(false);
+								uploadFile.setStatus(1);
+								uploadFileList.add(uploadFile);
+								
+								imgUrls.add(cropPathUrl);
 							} catch (Exception e) {
 								e.printStackTrace();
 							}
-							fileList.add(file);
 						} catch (Exception e) {
 							e.printStackTrace();
 						}
-						
-						 if ("avatar".equals(channel)) {
-							 zoomAvartar(ImageConfig.IMAGE_LOCAL_PATH_PREFIX + newName, false); }
-						 
+
+						if ("avatar".equals(channel)) {
+							zoomAvartar(cropFilePath, false); 
+						}
+
 					}
 
 				}
 			}
 		}
-
-		// 此处为本地地址返回
-		String desFileName = null;
-
-		JSONArray imgUrls = new JSONArray();
-
-		imgUrls.add(desFileName);
 
 		Map<String, Object> obj = new HashMap<String, Object>();
 
@@ -457,8 +499,8 @@ public class UploadFileController implements HandlerExceptionResolver {
 			String newPath = getNewFileName(srcPath,adapters[2]);
 			try {
 				ImageTools.zoomImage(width, height, addWhite, srcPath, newPath);
-				if((boolean) map.get("waterMark")){
-					String waterMarkPath = (String) map.get("waterMarkPath");
+				if((boolean) map.get("addWatermark") && (width>=400 && height>=300)){
+					String waterMarkPath = (String) map.get("watermarkPath");
 					ImageTools.waterMark(waterMarkPath, newPath, newPath, "southeast", 40);
 				}
 			} catch (Exception e) {
@@ -528,7 +570,6 @@ public class UploadFileController implements HandlerExceptionResolver {
 		
 		Map<String, Object> model = new HashMap<String, Object>();
 
-		//此处发现tomcat的异常会事先抛出
 		if(exception instanceof MultipartException){
 			LOG.info("FileSizeLimitExceededException ... ");
 			model.put("errors", ((MultipartException) exception).getMessage());
@@ -540,16 +581,19 @@ public class UploadFileController implements HandlerExceptionResolver {
 			model.put("errors", "Unexpected error: " + exception.getMessage());
 		}
 		
-		String type = request.getParameter("returnType");
-		if (!"json".equals(type)) {
-			return new ModelAndView("upload", (Map<String, Object>) model);
-		} else {
-			ModelAndView mav = new ModelAndView(new MappingJackson2JsonView());
-			mav.addObject("success", false);
-			mav.addObject((Map<String, Object>) model);
-			return mav;
+		try {
+			String type = request.getParameter("returnType");
+			if ("json".equals(type)) {
+				ModelAndView mav = new ModelAndView(new MappingJackson2JsonView());
+				mav.addObject("success", false);
+				mav.addObject((Map<String, Object>) model);
+				return mav;
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
 		}
-
+		
+		return new ModelAndView("upload", (Map<String, Object>) model);
 	}
 
 }

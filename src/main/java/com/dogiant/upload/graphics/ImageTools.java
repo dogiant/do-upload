@@ -58,7 +58,7 @@ public class ImageTools {
 		op.addImage(newPath);
 		ConvertCmd convert = new ConvertCmd(true);
 		if (setSearchPath) {
-			convert.setSearchPath("/export/servers/GraphicsMagick");
+			convert.setSearchPath(imageMagickPath);
 		}
 		convert.run(op);
 	}
