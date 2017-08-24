@@ -73,6 +73,108 @@ public class UploadFileController implements HandlerExceptionResolver {
 		
 		String type = request.getParameter("type");
 		
+		Boolean isPic = "true".equals(request.getParameter("isPic"));
+		
+		// 返回地址 ?fileName=/201405/16/hp/hp_14002197707471.jpg
+		String returnUrl = request.getParameter("returnUrl");
+		LOG.info(returnUrl);
+		
+		Map<String, Object> obj = new HashMap<String, Object>();
+		
+		Date date = new Date();
+		StringBuffer url = new StringBuffer();
+		url.append("/").append(new SimpleDateFormat("yyyyMM").format(date)).append("/")
+				.append(new SimpleDateFormat("dd").format(date)).append("/").append(channel);
+
+		// 存储路径
+		String uploadpath = ImageConfig.IMAGE_LOCAL_PATH_PREFIX + url.toString();
+
+		FileUtil.mkdir(uploadpath);
+		
+		// 上传的文件列表
+		List<UploadFile> uploadFileList = new ArrayList<UploadFile>();
+		
+		if(!isPic){
+			// <input type="file" name="uploads"/>
+			for (MultipartFile upload : uploads) {
+				if (upload.isEmpty()) {
+					LOG.info("文件未上传");
+					continue;
+				} else {
+					LOG.info("文件长度: " + upload.getSize());
+					LOG.info("文件类型: " + upload.getContentType());
+					LOG.info("文件字段名称: " + upload.getName());
+					LOG.info("文件名: " + upload.getOriginalFilename());
+					LOG.info("========================================");
+
+					// 判断size是否超出限制 1048576
+					if (upload.getSize() > 2*1024*1024) {
+						LOG.info("文件长度2M超限: " + upload.getSize());
+						LOG.info(ImageConfig.FILE_HOST);
+						if ("url".equals(type) && StringUtils.isNotBlank(returnUrl) && returnUrl.indexOf(ImageConfig.DOMAIN) != -1) {
+							String msg = "上传文件大小超过2M限制";
+							try {
+								response.sendRedirect(returnUrl + "?code=403&msg=" + URLEncoder.encode(msg, "utf8"));
+							} catch (UnsupportedEncodingException e) {
+								e.printStackTrace();
+							} catch (IOException e) {
+								e.printStackTrace();
+							}
+							return null;
+						} else {
+							obj.put("success", false);
+							obj.put("code", 403);
+							obj.put("msg", "上传文件大小超过2M限制");
+							JSONObject o = new JSONObject(obj);
+							String jsonString = o.toJSONString();
+							if (callback == null || callback.length() == 0) {
+								return jsonString;
+							}
+							return "try{" + callback + "(" + jsonString + ");}catch(e){}";
+						}
+					}
+
+					Date createtime = new Date();
+					String contentType = upload.getContentType();
+					String uploadFileName = upload.getOriginalFilename();
+
+					LOG.info("uploadFile" + ":" + uploadFileName + ":" + contentType);
+
+					String format = uploadFileName.substring(uploadFileName.lastIndexOf('.') + 1);
+
+					// 图片名
+					String name = channel + "_" + createtime.getTime() + "_" + upload.getSize() + "." + format;
+
+					try {
+						FileUtils.copyInputStreamToFile(upload.getInputStream(), new File(uploadpath, name));
+					} catch (IOException e1) {
+						e1.printStackTrace();
+					}
+					
+					// 相对路径
+					String pathUrl = url.toString() + "/" + name;
+					
+					UploadFile file = new UploadFile();
+					file.setChannel(channel);
+					file.setCreator(channel);
+					file.setUserId("");
+					file.setNickname("");
+
+					file.setCtime(createtime);
+					file.setMtime(createtime);
+					file.setContentType(contentType);
+					file.setExtension(format);
+					file.setName(name);
+					file.setUrl(pathUrl);
+
+					file.setAudit(false);
+					file.setStatus(1);
+					uploadFileList.add(file);
+				}
+			}
+		}
+		
+		
 		Boolean genThumbnails = "true".equals(request.getParameter("genThumbnails"));
 		
 		Boolean paddingWhite = request.getParameter("paddingWhite") == null ? ImageConfig.PADDING_WHITE
@@ -88,43 +190,24 @@ public class UploadFileController implements HandlerExceptionResolver {
 			watermarkPath = ImageConfig.WATERMARK_LOCAL_PATH;
 		}
 
-		// 返回地址 ?fileName=/201405/16/hp/hp_14002197707471.jpg
-		String returnUrl = request.getParameter("returnUrl");
-		LOG.info(returnUrl);
-
 		String size = request.getParameter("size");
 		LOG.info("图片宽高值:" + size);
 
-		Date date = new Date();
-		StringBuffer url = new StringBuffer();
-		url.append("/").append(new SimpleDateFormat("yyyyMM").format(date)).append("/")
-				.append(new SimpleDateFormat("dd").format(date)).append("/").append(channel);
-
-		// 图片存储路径
-		String uploadpath = ImageConfig.IMAGE_LOCAL_PATH_PREFIX + url.toString();
-
-		FileUtil.mkdir(uploadpath);
-
-		Map<String, Object> obj = new HashMap<String, Object>();
-
-		// 上传的文件列表
-		List<UploadFile> uploadFileList = new ArrayList<UploadFile>();
-
 		// <input type="file" name="uploads"/>
-		for (MultipartFile upload : uploads) {
-			if (upload.isEmpty()) {
+		for (MultipartFile pic : uploads) {
+			if (pic.isEmpty()) {
 				LOG.info("文件未上传");
 				continue;
 			} else {
-				LOG.info("文件长度: " + upload.getSize());
-				LOG.info("文件类型: " + upload.getContentType());
-				LOG.info("文件字段名称: " + upload.getName());
-				LOG.info("文件名: " + upload.getOriginalFilename());
+				LOG.info("文件长度: " + pic.getSize());
+				LOG.info("文件类型: " + pic.getContentType());
+				LOG.info("文件字段名称: " + pic.getName());
+				LOG.info("文件名: " + pic.getOriginalFilename());
 				LOG.info("========================================");
 
 				// 判断size是否超出限制 1048576
-				if (upload.getSize() > 2*1024*1024) {
-					LOG.info("文件长度2M超限: " + upload.getSize());
+				if (pic.getSize() > 2*1024*1024) {
+					LOG.info("文件长度2M超限: " + pic.getSize());
 					LOG.info(ImageConfig.FILE_HOST);
 					if ("url".equals(type) && StringUtils.isNotBlank(returnUrl) && returnUrl.indexOf(ImageConfig.DOMAIN) != -1) {
 						String msg = "上传文件大小超过2M限制";
@@ -150,18 +233,18 @@ public class UploadFileController implements HandlerExceptionResolver {
 				}
 
 				Date createtime = new Date();
-				String contentType = upload.getContentType();
-				String uploadFileName = upload.getOriginalFilename();
+				String contentType = pic.getContentType();
+				String uploadFileName = pic.getOriginalFilename();
 
 				LOG.info("uploadFile" + ":" + uploadFileName + ":" + contentType);
 
 				String format = uploadFileName.substring(uploadFileName.lastIndexOf('.') + 1);
 
 				// 图片名
-				String name = channel + "_" + createtime.getTime() + "_" + upload.getSize() + "." + format;
+				String name = channel + "_" + createtime.getTime() + "_" + pic.getSize() + "." + format;
 
 				try {
-					FileUtils.copyInputStreamToFile(upload.getInputStream(), new File(uploadpath, name));
+					FileUtils.copyInputStreamToFile(pic.getInputStream(), new File(uploadpath, name));
 				} catch (IOException e1) {
 					e1.printStackTrace();
 				}
@@ -218,8 +301,6 @@ public class UploadFileController implements HandlerExceptionResolver {
 					}
 				}
 				
-				
-
 				UploadFile file = new UploadFile();
 				file.setChannel(channel);
 				file.setCreator(channel);
@@ -244,7 +325,7 @@ public class UploadFileController implements HandlerExceptionResolver {
 		// uploadFileDao 插入数据表UploadFile
 		if (CollectionUtils.isNotEmpty(uploadFileList)) {
 			
-			if (genThumbnails!=null && genThumbnails) {
+			if (isPic && genThumbnails!=null && genThumbnails) {
 				try {
 					if ("avatar".equals(channel)) {
 						zoomAvartars(uploadFileList,paddingWhite);
