@@ -142,7 +142,7 @@ public class UploadFileController implements HandlerExceptionResolver {
 
 					String format = uploadFileName.substring(uploadFileName.lastIndexOf('.') + 1);
 
-					// 图片名
+					// 文件名
 					String name = channel + "_" + createtime.getTime() + "_" + upload.getSize() + "." + format;
 
 					try {
@@ -172,115 +172,46 @@ public class UploadFileController implements HandlerExceptionResolver {
 					uploadFileList.add(file);
 				}
 			}
-		}
-		
-		
-		Boolean genThumbnails = "true".equals(request.getParameter("genThumbnails"));
-		
-		Boolean paddingWhite = request.getParameter("paddingWhite") == null ? ImageConfig.PADDING_WHITE
-				: "true".equals(request.getParameter("paddingWhite"));
-		
-		String sizes = request.getParameter("sizes");
-		
-		Boolean addWatermark = "true".equals(request.getParameter("addWatermark"));
-		
-		String watermarkPath = request.getParameter("watermarkPath");
-		
-		if(StringUtils.isEmpty(watermarkPath)){
-			watermarkPath = ImageConfig.WATERMARK_LOCAL_PATH;
-		}
+		}else{
+			Boolean genThumbnails = "true".equals(request.getParameter("genThumbnails"));
+			
+			Boolean paddingWhite = request.getParameter("paddingWhite") == null ? ImageConfig.PADDING_WHITE
+					: "true".equals(request.getParameter("paddingWhite"));
+			
+			//图片宽高
+			String sizes = request.getParameter("sizes");
+			
+			Boolean addWatermark = "true".equals(request.getParameter("addWatermark"));
+			
+			String watermarkPath = request.getParameter("watermarkPath");
+			
+			if(StringUtils.isEmpty(watermarkPath)){
+				watermarkPath = ImageConfig.WATERMARK_LOCAL_PATH;
+			}
 
-		String size = request.getParameter("size");
-		LOG.info("图片宽高值:" + size);
+			String size = request.getParameter("size");
+			LOG.info("图片宽高值:" + size);
 
-		// <input type="file" name="uploads"/>
-		for (MultipartFile pic : uploads) {
-			if (pic.isEmpty()) {
-				LOG.info("文件未上传");
-				continue;
-			} else {
-				LOG.info("文件长度: " + pic.getSize());
-				LOG.info("文件类型: " + pic.getContentType());
-				LOG.info("文件字段名称: " + pic.getName());
-				LOG.info("文件名: " + pic.getOriginalFilename());
-				LOG.info("========================================");
+			// <input type="file" name="uploads"/>
+			for (MultipartFile pic : uploads) {
+				if (pic.isEmpty()) {
+					LOG.info("文件未上传");
+					continue;
+				} else {
+					LOG.info("文件长度: " + pic.getSize());
+					LOG.info("文件类型: " + pic.getContentType());
+					LOG.info("文件字段名称: " + pic.getName());
+					LOG.info("文件名: " + pic.getOriginalFilename());
+					LOG.info("========================================");
 
-				// 判断size是否超出限制 1048576
-				if (pic.getSize() > 2*1024*1024) {
-					LOG.info("文件长度2M超限: " + pic.getSize());
-					LOG.info(ImageConfig.FILE_HOST);
-					if ("url".equals(type) && StringUtils.isNotBlank(returnUrl) && returnUrl.indexOf(ImageConfig.DOMAIN) != -1) {
-						String msg = "上传文件大小超过2M限制";
-						try {
-							response.sendRedirect(returnUrl + "?code=403&msg=" + URLEncoder.encode(msg, "utf8"));
-						} catch (UnsupportedEncodingException e) {
-							e.printStackTrace();
-						} catch (IOException e) {
-							e.printStackTrace();
-						}
-						return null;
-					} else {
-						obj.put("success", false);
-						obj.put("code", 403);
-						obj.put("msg", "上传文件大小超过2M限制");
-						JSONObject o = new JSONObject(obj);
-						String jsonString = o.toJSONString();
-						if (callback == null || callback.length() == 0) {
-							return jsonString;
-						}
-						return "try{" + callback + "(" + jsonString + ");}catch(e){}";
-					}
-				}
-
-				Date createtime = new Date();
-				String contentType = pic.getContentType();
-				String uploadFileName = pic.getOriginalFilename();
-
-				LOG.info("uploadFile" + ":" + uploadFileName + ":" + contentType);
-
-				String format = uploadFileName.substring(uploadFileName.lastIndexOf('.') + 1);
-
-				// 图片名
-				String name = channel + "_" + createtime.getTime() + "_" + pic.getSize() + "." + format;
-
-				try {
-					FileUtils.copyInputStreamToFile(pic.getInputStream(), new File(uploadpath, name));
-				} catch (IOException e1) {
-					e1.printStackTrace();
-				}
-
-				// 相对路径
-				String pathUrl = url.toString() + "/" + name;
-
-				int width = 0;
-				int height = 0;
-				// 判断图片宽高大小是否符合要求
-				try {
-					String sizeJson = ImageTools.getImageSize(ImageConfig.IMAGE_LOCAL_PATH_PREFIX + pathUrl);
-					JSONObject jsonObject = JSON.parseObject(sizeJson);
-					width = jsonObject.getIntValue("width");
-					height = jsonObject.getIntValue("height");
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
-
-				if (width != 0 && height != 0) {
-					String msg = "";
-					if (StringUtils.isNotEmpty(size)) {
-						try {
-							String[] s = size.split("\\*");
-							if (s != null && s.length == 2
-									&& (width != Integer.valueOf(s[0]) || height != Integer.valueOf(s[1]))) {
-								msg = "上传图片宽高必须为" + s[0] + "x" + s[1];
-							}
-						} catch (Exception e) {
-							e.printStackTrace();
-						}
-					}
-					if (StringUtils.isNotBlank(msg)) {
-						if (StringUtils.isNotBlank(returnUrl) && returnUrl.indexOf(".jd") != -1) {
+					// 判断size是否超出限制 1048576
+					if (pic.getSize() > 2*1024*1024) {
+						LOG.info("文件长度2M超限: " + pic.getSize());
+						LOG.info(ImageConfig.FILE_HOST);
+						if ("url".equals(type) && StringUtils.isNotBlank(returnUrl) && returnUrl.indexOf(ImageConfig.DOMAIN) != -1) {
+							String msg = "上传文件大小超过2M限制";
 							try {
-								response.sendRedirect(returnUrl + "?code=402&msg=" + URLEncoder.encode(msg, "utf8"));
+								response.sendRedirect(returnUrl + "?code=403&msg=" + URLEncoder.encode(msg, "utf8"));
 							} catch (UnsupportedEncodingException e) {
 								e.printStackTrace();
 							} catch (IOException e) {
@@ -289,8 +220,8 @@ public class UploadFileController implements HandlerExceptionResolver {
 							return null;
 						} else {
 							obj.put("success", false);
-							obj.put("code", 402);
-							obj.put("msg", "上传图片比例不正确," + msg);
+							obj.put("code", 403);
+							obj.put("msg", "上传文件大小超过2M限制");
 							JSONObject o = new JSONObject(obj);
 							String jsonString = o.toJSONString();
 							if (callback == null || callback.length() == 0) {
@@ -299,56 +230,128 @@ public class UploadFileController implements HandlerExceptionResolver {
 							return "try{" + callback + "(" + jsonString + ");}catch(e){}";
 						}
 					}
+
+					Date createtime = new Date();
+					String contentType = pic.getContentType();
+					String uploadFileName = pic.getOriginalFilename();
+
+					LOG.info("uploadFile" + ":" + uploadFileName + ":" + contentType);
+
+					String format = uploadFileName.substring(uploadFileName.lastIndexOf('.') + 1);
+
+					// 图片名
+					String name = channel + "_" + createtime.getTime() + "_" + pic.getSize() + "." + format;
+
+					try {
+						FileUtils.copyInputStreamToFile(pic.getInputStream(), new File(uploadpath, name));
+					} catch (IOException e1) {
+						e1.printStackTrace();
+					}
+
+					// 相对路径
+					String pathUrl = url.toString() + "/" + name;
+
+					int width = 0;
+					int height = 0;
+					// 判断图片宽高大小是否符合要求
+					try {
+						String sizeJson = ImageTools.getImageSize(ImageConfig.IMAGE_LOCAL_PATH_PREFIX + pathUrl);
+						JSONObject jsonObject = JSON.parseObject(sizeJson);
+						width = jsonObject.getIntValue("width");
+						height = jsonObject.getIntValue("height");
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+
+					if (width != 0 && height != 0) {
+						String msg = "";
+						if (StringUtils.isNotEmpty(size)) {
+							try {
+								String[] s = size.split("\\*");
+								if (s != null && s.length == 2
+										&& (width != Integer.valueOf(s[0]) || height != Integer.valueOf(s[1]))) {
+									msg = "上传图片宽高必须为" + s[0] + "x" + s[1];
+								}
+							} catch (Exception e) {
+								e.printStackTrace();
+							}
+						}
+						if (StringUtils.isNotBlank(msg)) {
+							if (StringUtils.isNotBlank(returnUrl) && returnUrl.indexOf(".jd") != -1) {
+								try {
+									response.sendRedirect(returnUrl + "?code=402&msg=" + URLEncoder.encode(msg, "utf8"));
+								} catch (UnsupportedEncodingException e) {
+									e.printStackTrace();
+								} catch (IOException e) {
+									e.printStackTrace();
+								}
+								return null;
+							} else {
+								obj.put("success", false);
+								obj.put("code", 402);
+								obj.put("msg", "上传图片比例不正确," + msg);
+								JSONObject o = new JSONObject(obj);
+								String jsonString = o.toJSONString();
+								if (callback == null || callback.length() == 0) {
+									return jsonString;
+								}
+								return "try{" + callback + "(" + jsonString + ");}catch(e){}";
+							}
+						}
+					}
+					
+					UploadFile file = new UploadFile();
+					file.setChannel(channel);
+					file.setCreator(channel);
+					file.setUserId("");
+					file.setNickname("");
+
+					file.setCtime(createtime);
+					file.setMtime(createtime);
+					file.setContentType(contentType);
+					file.setExtension(format);
+					file.setName(name);
+					file.setUrl(pathUrl);
+
+					file.setAudit(false);
+					file.setStatus(1);
+					uploadFileList.add(file);
+					
+					
+					if (genThumbnails!=null && genThumbnails) {
+						try {
+							if ("avatar".equals(channel)) {
+								zoomAvartar(ImageConfig.IMAGE_LOCAL_PATH_PREFIX + file.getUrl(), paddingWhite);
+							}
+							if (StringUtils.isNotEmpty(sizes)) {
+								Map<String, Object> map = new HashMap<String, Object>();
+								map.put("addWatermark", addWatermark);
+								map.put("watermarkPath", watermarkPath);
+								zoomImages(map,uploadFileList,sizes,paddingWhite);
+							}
+						} catch (Exception e) {
+							e.printStackTrace();
+							obj.put("success", false);
+							obj.put("code", 500);
+							obj.put("msg", "生成缩略图异常");
+							JSONObject o = new JSONObject(obj);
+							String jsonString = o.toJSONString();
+							if (callback == null || callback.length() == 0) {
+								return jsonString;
+							}
+							return "try{" + callback + "(" + jsonString + ");}catch(e){}";
+						}
+					}
+
 				}
-				
-				UploadFile file = new UploadFile();
-				file.setChannel(channel);
-				file.setCreator(channel);
-				file.setUserId("");
-				file.setNickname("");
-
-				file.setCtime(createtime);
-				file.setMtime(createtime);
-				file.setContentType(contentType);
-				file.setExtension(format);
-				file.setName(name);
-				file.setUrl(pathUrl);
-
-				file.setAudit(false);
-				file.setStatus(1);
-				uploadFileList.add(file);
-
 			}
 		}
+		
 
 		JSONArray imgUrls = new JSONArray();
 		// uploadFileDao 插入数据表UploadFile
 		if (CollectionUtils.isNotEmpty(uploadFileList)) {
 			
-			if (isPic && genThumbnails!=null && genThumbnails) {
-				try {
-					if ("avatar".equals(channel)) {
-						zoomAvartars(uploadFileList,paddingWhite);
-					}
-					if (StringUtils.isNotEmpty(sizes)) {
-						Map<String, Object> map = new HashMap<String, Object>();
-						map.put("addWatermark", addWatermark);
-						map.put("watermarkPath", watermarkPath);
-						zoomImages(map,uploadFileList,sizes,paddingWhite);
-					}
-				} catch (Exception e) {
-					e.printStackTrace();
-					obj.put("success", false);
-					obj.put("code", 500);
-					obj.put("msg", "生成缩略图异常");
-					JSONObject o = new JSONObject(obj);
-					String jsonString = o.toJSONString();
-					if (callback == null || callback.length() == 0) {
-						return jsonString;
-					}
-					return "try{" + callback + "(" + jsonString + ");}catch(e){}";
-				}
-			}
 			for (UploadFile uploadFile : uploadFileList) {
 				LOG.info("uploadFile path: " + ImageConfig.IMAGE_LOCAL_PATH_PREFIX + uploadFile.getUrl());
 				File file = null;
@@ -595,6 +598,7 @@ public class UploadFileController implements HandlerExceptionResolver {
 	 * @param list
 	 * @param addWhite
 	 */
+	@SuppressWarnings("unused")
 	private void zoomAvartars(List<UploadFile> list, boolean paddingWhite) {
 		Iterator<UploadFile> it = list.iterator();
 		while (it.hasNext()) {
