@@ -6,7 +6,7 @@
 	<groupId>com.dogiant</groupId>
 	<artifactId>do-upload</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<packaging>jar</packaging>
+	<packaging>war</packaging>
 
 	<name>do-upload</name>
 	<description>do-upload project for Spring Boot</description>
@@ -36,14 +36,12 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-web</artifactId>
-			<!-- 
 			<exclusions>  
 		        <exclusion>  
 		            <groupId>org.springframework.boot</groupId>  
 		            <artifactId>spring-boot-starter-tomcat</artifactId>  
 		        </exclusion>  
 	    	</exclusions> 
-	    	 -->
 		</dependency>
 
 		<dependency>
@@ -65,7 +63,6 @@
 	        <scope>provided</scope>
 	    </dependency>
 
-		 
 		<!-- spring boot jsp -->
         <dependency>
             <groupId>javax.servlet</groupId>
